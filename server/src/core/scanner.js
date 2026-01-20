@@ -4,61 +4,100 @@ const path = require('path');
 /**
  * Recursively scans a directory to calculate disk usage.
  * 
- * DESIGN DECISIONS:
- * - Async/Await: Used to prevent blocking the event loop during heavy I/O.
- * - Error Handling: We catch EACCES/EPERM to skip restricted directories without crashing.
- * - Symlinks: We explicitly check for symlinks and do NOT follow them to avoid infinite loops.
- * - Structure: Returns a tree structure to allow granular analysis later.
+ * Supports optional progress reporting and cooperative cancellation.
  * 
  * @param {string} dirPath - The absolute path to scan.
+ * @param {object} [options] - Optional settings.
+ * @param {function} [options.onProgress] - Callback invoked with { directoriesProcessed, filesProcessed }.
+ * @param {AbortSignal} [options.signal] - Signal to cancel the scan.
  * @returns {Promise<object>} - Tree structure with size and children.
+ * @throws {Error} - Throws error with code 'ABORT_ERR' if cancelled.
  */
-async function scanDirectory(dirPath) {
+async function scanDirectory(dirPath, options = {}) {
+    // Shared state for progress tracking
+    const state = {
+        directoriesProcessed: 0,
+        filesProcessed: 0
+    };
+
+    return _scanRecursive(dirPath, options, state);
+}
+
+/**
+ * Internal recursive helper.
+ * 
+ * @param {string} dirPath 
+ * @param {object} options 
+ * @param {object} state 
+ */
+async function _scanRecursive(dirPath, options, state) {
+    // 1. Check Cancellation at entry
+    if (options.signal?.aborted) {
+        const error = new Error('Scan aborted');
+        error.code = 'ABORT_ERR';
+        throw error;
+    }
+
     // Initialize the result node
     const result = {
         path: dirPath,
         size: 0,
         type: 'directory',
         children: [],
-        error: null // To bubble up permission errors if needed strictly, or just logged
+        error: null
     };
+
+    // Update progress for directory (started processing)
+    state.directoriesProcessed++;
+    if (options.onProgress) {
+        options.onProgress({ ...state });
+    }
 
     let entries;
     try {
-        // Read directory contents
         entries = await fs.readdir(dirPath);
     } catch (error) {
-        // Handle permission errors gracefully
         if (error.code === 'EACCES' || error.code === 'EPERM') {
             result.error = 'PERMISSION_DENIED';
-            return result; // Return empty/zero size for this node
+            return result;
         }
-        // Re-throw other unexpected errors
         throw error;
     }
 
-    // Process all entries in parallel for performance, but limit concurrency if needed (using Promise.all here for simplicity)
-    // detailed Note: Promise.all is fine for local FS usually, but for huge trees consider a queue. 
-    // For Step 1.1, Promise.all is sufficient.
+    // 2. Check Cancellation before processing children
+    if (options.signal?.aborted) {
+        const error = new Error('Scan aborted');
+        error.code = 'ABORT_ERR';
+        throw error;
+    }
 
     const promises = entries.map(async (entry) => {
+        // 3. Check Cancellation inside loop (optional but good for responsiveness)
+        if (options.signal?.aborted) {
+            // We can't easily stop the other promises in Promise.all, but we can fail fast here
+            const error = new Error('Scan aborted');
+            error.code = 'ABORT_ERR';
+            throw error;
+        }
+
         const fullPath = path.join(dirPath, entry);
 
         try {
-            // Get file stats; use lstat to NOT follow symlinks automatically
             const stats = await fs.lstat(fullPath);
 
             if (stats.isSymbolicLink()) {
-                // Skip symlinks to avoid loops and double counting
                 return null;
             }
 
             if (stats.isDirectory()) {
-                // Recurse
-                const childResult = await scanDirectory(fullPath);
-                return childResult;
+                return _scanRecursive(fullPath, options, state);
             } else {
-                // It's a file
+                // Update progress for file
+                state.filesProcessed++;
+                if (options.onProgress) {
+                    options.onProgress({ ...state });
+                }
+
                 return {
                     path: fullPath,
                     size: stats.size,
@@ -66,19 +105,15 @@ async function scanDirectory(dirPath) {
                 };
             }
         } catch (err) {
-            // Race condition: file might be deleted between readdir and lstat
-            // Or other access issues
+            if (err.code === 'ABORT_ERR') throw err; // Propagate abort
             return null;
         }
     });
 
-    // Wait for all children to be processed
+    // Wait for all children
     const childrenResults = await Promise.all(promises);
 
-    // Filter out nulls (symlinks, errors) and add to children
     result.children = childrenResults.filter(Boolean);
-
-    // Calculate total size for this directory
     result.size = result.children.reduce((acc, child) => acc + child.size, 0);
 
     return result;
