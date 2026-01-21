@@ -41,9 +41,13 @@ app.post('/scan', async (req, res) => {
     const controller = new AbortController();
     const { signal } = controller;
 
-    // Hook into request close for cancellation
-    req.on('close', () => {
-        controller.abort();
+    // Hook into response close used for cancellation
+    // If the response stream closes before we finished writing, the client left.
+    res.on('close', () => {
+        if (!res.writableEnded) {
+            console.log('DEBUG: Client disconnected, aborting scan...');
+            controller.abort();
+        }
     });
 
     try {
@@ -51,11 +55,16 @@ app.post('/scan', async (req, res) => {
         res.json(result);
     } catch (err) {
         if (err.code === 'ABORT_ERR') {
-            // 499 Client Closed Request (common for cancelled operations)
-            return res.status(499).json({ error: 'Scan cancelled' });
+            // If request was aborted, response might be closed or not writable
+            if (!res.headersSent) {
+                return res.status(499).json({ error: 'Scan cancelled' });
+            }
+            return;
         }
         console.error(err); // Minimal logging for server errors
-        res.status(500).json({ error: 'Internal server error' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 
@@ -70,8 +79,11 @@ app.post('/analyze', async (req, res) => {
     const controller = new AbortController();
     const { signal } = controller;
 
-    req.on('close', () => {
-        controller.abort();
+    res.on('close', () => {
+        if (!res.writableEnded) {
+            console.log('DEBUG: Client disconnected, aborting analysis...');
+            controller.abort();
+        }
     });
 
     try {
@@ -84,10 +96,15 @@ app.post('/analyze', async (req, res) => {
         res.json(result);
     } catch (err) {
         if (err.code === 'ABORT_ERR') {
-            return res.status(499).json({ error: 'Scan cancelled' });
+            if (!res.headersSent) {
+                return res.status(499).json({ error: 'Scan cancelled' });
+            }
+            return;
         }
         console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 });
 

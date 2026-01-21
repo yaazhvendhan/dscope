@@ -23,7 +23,9 @@ req.on('error', (e) => {
 });
 
 // Write data to request body
-req.write(JSON.stringify({ path: 'src' })); // Use a path that exists but might take a tiny bit to scan, or any path
+const path = require('path');
+const testPath = path.join(__dirname, 'api_test_data');
+req.write(JSON.stringify({ path: testPath }));
 
 // Abort request immediately to test cancellation
 setTimeout(() => {

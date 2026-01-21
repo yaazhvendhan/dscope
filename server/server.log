@@ -1,20 +1,12 @@
 nohup: ignoring input
 DScope Server running on http://localhost:3000
-Error: ENOENT: no such file or directory, scandir 'tests/test_sandbox_features'
-    at async Object.readdir (node:internal/fs/promises:957:18)
-    at async _scanRecursive (/home/horcrux/Projects/dscope/DScope/server/src/core/scanner.js:58:19)
-    at async /home/horcrux/Projects/dscope/DScope/server/src/index.js:50:24 {
-  errno: -2,
-  code: 'ENOENT',
-  syscall: 'scandir',
-  path: 'tests/test_sandbox_features'
-}
-Error: ENOENT: no such file or directory, scandir 'tests/test_sandbox_features'
-    at async Object.readdir (node:internal/fs/promises:957:18)
-    at async _scanRecursive (/home/horcrux/Projects/dscope/DScope/server/src/core/scanner.js:58:19)
-    at async /home/horcrux/Projects/dscope/DScope/server/src/index.js:79:24 {
-  errno: -2,
-  code: 'ENOENT',
-  syscall: 'scandir',
-  path: 'tests/test_sandbox_features'
-}
+BadRequestError: request aborted
+    at IncomingMessage.onAborted (/home/horcrux/Projects/dscope/DScope/server/node_modules/raw-body/index.js:245:10)
+    at IncomingMessage.emit (node:events:519:28)
+    at IncomingMessage._destroy (node:_http_incoming:221:10)
+    at _destroy (node:internal/streams/destroy:122:10)
+    at IncomingMessage.destroy (node:internal/streams/destroy:84:5)
+    at abortIncoming (node:_http_server:825:9)
+    at socketOnClose (node:_http_server:819:3)
+    at Socket.emit (node:events:531:35)
+    at TCP.<anonymous> (node:net:346:12)
