@@ -1,0 +1,9 @@
+nohup: ignoring input
+
+> dscope-desktop@1.0.0 start
+> electron .
+
+Starting backend from: /home/horcrux/Projects/dscope/DScope/server/src/index.js
+[55790:0121/053510.442529:ERROR:dbus/object_proxy.cc:573] Failed to call method: org.freedesktop.systemd1.Manager.StartTransientUnit: object_path= /org/freedesktop/systemd1: org.freedesktop.systemd1.UnitExists: Unit app-org.chromium.Chromium-55790.scope was already loaded or has a fragment file.
+[55834:0121/053510.451428:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:251] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+DScope Server running on http://localhost:3000

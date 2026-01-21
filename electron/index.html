@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DScope</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        h1 { margin-bottom: 0.5rem; }
+        h2 { font-weight: normal; color: #666; margin-top: 0; }
+        #status {
+            margin-top: 2rem;
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            background: #e0e0e0;
+            font-weight: bold;
+        }
+        .running { background-color: #d4edda !important; color: #155724; }
+        .error { background-color: #f8d7da !important; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>DScope</h1>
+    <h2>Disk Usage Intelligence for Linux</h2>
+    
+    <div id="status">Starting backend...</div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        
+        async function checkStatus() {
+            let attempts = 0;
+            const maxAttempts = 10; // Try for 10 seconds approx
+            
+            const interval = setInterval(async () => {
+                attempts++;
+                const result = await window.api.checkBackendStatus();
+                
+                if (result.running) {
+                    statusDiv.textContent = "Backend running";
+                    statusDiv.classList.add('running');
+                    clearInterval(interval);
+                } else if (attempts >= maxAttempts) {
+                    statusDiv.textContent = "Backend not reachable";
+                    statusDiv.classList.add('error');
+                    clearInterval(interval);
+                } else {
+                    statusDiv.textContent = `Starting backend... (${attempts})`;
+                }
+            }, 1000);
+        }
+
+        checkStatus();
+    </script>
+</body>
+</html>

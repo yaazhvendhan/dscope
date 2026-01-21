@@ -30,6 +30,11 @@ function enrichTree(node) {
     }
 }
 
+// GET /health
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
 // POST /scan
 app.post('/scan', async (req, res) => {
     const { path } = req.body;
