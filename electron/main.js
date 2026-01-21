@@ -34,7 +34,7 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadFile('electron/index.html');
+    mainWindow.loadFile(path.join(__dirname, '../client/dist/index.html'));
 
     mainWindow.on('closed', () => {
         mainWindow = null;

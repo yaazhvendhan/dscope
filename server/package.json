@@ -1,0 +1,14 @@
+{
+  "name": "dscope-server",
+  "version": "1.0.0",
+  "description": "Backend service for DScope",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node tests/test_scanner.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

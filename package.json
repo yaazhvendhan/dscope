@@ -1,0 +1,14 @@
+{
+    "name": "dscope-desktop",
+    "version": "1.0.0",
+    "description": "DScope Linux Disk Usage Intelligence",
+    "main": "electron/main.js",
+    "scripts": {
+        "start": "electron ."
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "electron": "^40.0.0"
+    }
+}

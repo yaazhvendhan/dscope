@@ -1,0 +1,106 @@
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f7f9fc;
+  color: #333;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 2rem;
+}
+
+.scan-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #3498db;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.cancel-btn {
+  background-color: #e74c3c;
+}
+
+.cancel-btn:hover {
+  background-color: #c0392b;
+}
+
+.status-area {
+  text-align: center;
+  margin-bottom: 20px;
+  min-height: 24px;
+}
+
+.scanning { color: #3498db; font-weight: bold; }
+.cancelled { color: #e74c3c; font-weight: bold; }
+.error { color: #e74c3c; }
+
+.results-area {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.node-item {
+  margin-top: 5px;
+}
+
+.node-header {
+  padding: 2px 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* Risk Colors */
+.badge.low { background-color: #d4edda; color: #155724; }
+.badge.normal { background-color: #e2e3e5; color: #383d41; }
+.badge.medium { background-color: #fff3cd; color: #856404; }
+.badge.user { background-color: #cce5ff; color: #004085; }
+.badge.unknown { background-color: #f8d7da; color: #721c24; }
