@@ -12,9 +12,36 @@ export interface ScanNode {
 
 export interface ScanResult extends ScanNode { }
 
+
+export interface OverviewCategory {
+    id: string;
+    label: string;
+    size: number;
+    delta: number | null;
+}
+
+export interface DirectoryNode {
+    name: string;
+    path: string;
+    size: number;
+    category?: string;
+    type?: string;
+    hasChildren?: boolean;
+    children?: DirectoryNode[];
+}
+
+export interface PresentationData {
+    overview: {
+        categories: OverviewCategory[];
+    };
+    directory: {
+        root: DirectoryNode;
+    };
+}
+
 export interface AppState {
     status: 'idle' | 'scanning' | 'success' | 'error' | 'cancelled';
-    data: ScanResult | null;
+    data: PresentationData | null;
     path: string;
     error: string | null;
 }

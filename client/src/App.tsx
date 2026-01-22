@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import './App.css';
-import type { ScanResult, AppState } from './types';
-import ResultsView from './components/ResultsView';
+import type { AppState, PresentationData } from './types';
+import Overview from './pages/Overview';
 
 const API_URL = 'http://localhost:3000';
 
@@ -29,7 +29,7 @@ function App() {
     setState(prev => ({ ...prev, status: 'scanning', error: null, data: null }));
 
     try {
-      const response = await fetch(`${API_URL}/analyze`, {
+      const response = await fetch(`${API_URL}/present`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: state.path }),
@@ -37,13 +37,12 @@ function App() {
       });
 
       if (!response.ok) {
-        // Handle 499 specifically if needed, otherwise generic error
         if (response.status === 499) throw new Error('Scan cancelled');
         const errData = await response.json();
         throw new Error(errData.error || 'Scan failed');
       }
 
-      const result: ScanResult = await response.json();
+      const result: PresentationData = await response.json();
       setState(prev => ({ ...prev, status: 'success', data: result }));
     } catch (err: any) {
       if (err.name === 'AbortError' || err.message === 'Scan cancelled') {
@@ -78,21 +77,22 @@ function App() {
         />
 
         {state.status === 'scanning' ? (
-          <button onClick={handleCancel} className="cancel-btn">Cancel Scan</button>
+          <button onClick={handleCancel} className="cancel-btn">Cancel</button>
         ) : (
-          <button onClick={handleScan} disabled={!state.path}>Scan</button>
+          <button onClick={handleScan} disabled={!state.path}>Analyze</button>
         )}
       </div>
 
       <div className="status-area">
-        {state.status === 'scanning' && <p className="scanning">Scanning...</p>}
+        {state.status === 'scanning' && <p className="scanning">Analyzing disk usage...</p>}
         {state.status === 'cancelled' && <p className="cancelled">Scan cancelled</p>}
         {state.status === 'error' && <p className="error">Error: {state.error}</p>}
       </div>
 
       {state.status === 'success' && state.data && (
         <div className="results-area">
-          <ResultsView node={state.data} />
+          {/* Render Overview Mode by default */}
+          <Overview categories={state.data.overview.categories} />
         </div>
       )}
     </div>
