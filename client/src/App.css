@@ -1,4 +1,3 @@
-
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -67,15 +66,25 @@ button:hover:not(:disabled) {
   min-height: 24px;
 }
 
-.scanning { color: #3498db; font-weight: bold; }
-.cancelled { color: #e74c3c; font-weight: bold; }
-.error { color: #e74c3c; }
+.scanning {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.cancelled {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.error {
+  color: #e74c3c;
+}
 
 .results-area {
   background: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
   max-height: 60vh;
   overflow-y: auto;
 }
@@ -98,9 +107,120 @@ button:hover:not(:disabled) {
   text-transform: uppercase;
 }
 
+/* Overview Styles */
+.overview-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.overview-card {
+  background-color: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: #ced4da;
+}
+
+.overview-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.overview-label {
+  font-weight: 600;
+  font-size: 1.1em;
+  color: #2c3e50;
+}
+
+.overview-size {
+  font-size: 0.9em;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.overview-delta {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.delta-up {
+  color: #e74c3c;
+}
+
+.delta-down {
+  color: #27ae60;
+}
+
+.delta-neutral {
+  color: #adb5bd;
+}
+
+/* Toggle Styles */
+.view-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+}
+
+.toggle-btn {
+  background: transparent;
+  color: #6c757d;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background-color: #f1f3f5;
+  color: #495057;
+}
+
+.toggle-btn.active {
+  background-color: #e7f5ff;
+  color: #1971c2;
+  font-weight: 600;
+}
+
 /* Risk Colors */
-.badge.low { background-color: #d4edda; color: #155724; }
-.badge.normal { background-color: #e2e3e5; color: #383d41; }
-.badge.medium { background-color: #fff3cd; color: #856404; }
-.badge.user { background-color: #cce5ff; color: #004085; }
-.badge.unknown { background-color: #f8d7da; color: #721c24; }
+.badge.low {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.badge.normal {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.badge.medium {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge.user {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.badge.unknown {
+  background-color: #f8d7da;
+  color: #721c24;
+}

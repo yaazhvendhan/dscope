@@ -70,7 +70,22 @@ function aggregateOverviewStats(node) {
         const category = currentNode.category || 'unclassified';
         const ext = path.extname(currentNode.name || '').toLowerCase();
 
-        // 1. High-priority strict matches
+        // 1. EXTENSIONS FIRST (Global Priority)
+        // Fixes "Photos / Videos / Documents = 0" bug by ignoring folder category
+        if (EXTENSIONS.photos.has(ext)) {
+            stats.photos += size;
+            return;
+        }
+        if (EXTENSIONS.videos.has(ext)) {
+            stats.videos += size;
+            return;
+        }
+        if (EXTENSIONS.documents.has(ext)) {
+            stats.documents += size;
+            return;
+        }
+
+        // 2. BACKEND CATEGORIES
         if (category === 'cache') {
             stats.cache += size;
             return;
@@ -83,32 +98,12 @@ function aggregateOverviewStats(node) {
             stats.system += size;
             return;
         }
-        if (category === 'packages' || category === 'dependencies') { // assumption based on context, scanner uses 'packages'? Scanner uses 'packages' and 'dependencies' likely mapped to 'packages' or similar. 
-            // Checking classifier.js: it uses 'packages', 'dependencies' isn't explicit but scanner might yield it? 
-            // Wait, classifier.js returns: 'logs', 'cache', 'containers', 'packages', 'kernels', 'system', 'user-data'.
+        if (category === 'packages' || category === 'dependencies') {
             stats.apps += size;
             return;
         }
 
-        // 2. User-Data decomposition
-        if (category === 'user-data' || category === 'unclassified') {
-            if (EXTENSIONS.photos.has(ext)) {
-                stats.photos += size;
-            } else if (EXTENSIONS.videos.has(ext)) {
-                stats.videos += size;
-            } else if (EXTENSIONS.documents.has(ext)) {
-                stats.documents += size;
-            } else {
-                // Fallback for user-data that isn't media/doc -> counts as Other? 
-                // Or maybe strictly user-data should be separate?
-                // The prompt lists: Photos, Videos, Documents, Apps, Cache, Containers, System, Other.
-                // If it's user-data but not media, it logically fits "Other" or "Documents" (misc).
-                // Let's accumulate to 'other' for now to be safe, or we'd miss size.
-                stats.other += size;
-            }
-            return;
-        }
-
+        // 3. FALLBACK
         stats.other += size;
     }
 
@@ -150,24 +145,14 @@ function buildOverviewCategories(stats, diffResult) {
             label: 'Other',
             size: stats.other,
             delta: getDelta(diffResult, ['unclassified', 'user-data'])
-            // Note: 'user-data' history exists, but we split it into Photos/Videos/Docs/Other in current UI.
-            // We cannot ascribe user-data delta to 'Other' entirely because it might belong to Photos.
-            // Therefore, 'Other' delta is also structurally ambiguous if user-data is involved.
-            // Prompt says: "Other (from unclassified)". It implies we should NOT include user-data in Other's delta.
-            // Strict interpretation: Delta for 'Other' = delta of 'unclassified'.
         }
     ];
 
-    // Refinement on Other Delta:
-    // If we map 'unclassified' -> 'Other', then delta is valid.
-    // But 'user-data' is split. We can't map 'user-data' delta to any specific UI group.
-    // Implementation choice: Only 'unclassified' maps to 'Other' delta.
     const otherCat = cats.find(c => c.id === 'other');
     if (otherCat) {
         otherCat.delta = getDelta(diffResult, ['unclassified']);
     }
 
-    // Sort by size descending
     return cats.sort((a, b) => b.size - a.size);
 }
 
@@ -184,69 +169,29 @@ function getDelta(diffResult, backendCategories) {
         }
     }
 
-    return found ? sum : null; // If no deltas found for these cats, return null? Or 0?
-    // "Omitting zero deltas" in diffEngine means undefined implies 0 change if category exists.
-    // However, if we return 0 here, it implies strict knowledge. 
-    // If diffResult exists (not baseline), and we track these categories, a missing key means 0 delta.
-    // So we should return 0 if found is false (provided diffResult is valid).
-    // EXCEPT: If the category never existed in history, is it 0 or null?
-    // DiffEngine handles new categories by checking partial snapshots.
-    // So 0 is safe if we are sure it's tracked.
-    // Let's return sum (which is 0 if nothing found).
-    return sum;
+    return found ? sum : null;
 }
 
-// ------ DIRECTORY MAPPING LOGIC ------
+// ------ DIRECTORY MAPPING LOGIC (RECURSIVE) ------
 
 function mapDirectoryNode(node) {
-    const isHidden = HIDDEN_DIRS.has(node.name) || node.name.startsWith('.'); // simplistic dotfile check? 
-    // Explicit list + .cache is better. Prompt says: "node_modules, .git, .cache, dist, build".
-    // I will stick to explicit set plus generic check if needed, but explicit is safer.
-    // Actually, prompt says: "Hide noisy folders by default".
-    // I won't filter them out entirely (remove from tree), because user might want them.
-    // Implication: "Hide" means maybe flag them? 
-    // Prompt says: "Filter noisy folders... Include metadata... children: [shallow]".
-    // "Filter out (or marks hidden)" in my plan.
-    // I will exclude them from the *initial* children list? No, "Hide by default" implies UI toggle.
-    // But "Filter noisy folders" in strict rules likely means "Don't send them in the simplified view".
-    // Re-reading Directory Mode rules: "Hide noisy folders by default... Provide enough metadata so UI can expand on click".
-    // This implies the UI handles expansion. 
-    // If I filter them here, the UI can't access them unless I have a flag.
-    // I will return them but maybe with a property `isHidden: true`? 
-    // "Hidden by default" usually means they are in the list but maybe at the bottom or collapsed?
-    // Wait, "Only include direct children (lazy)".
-    // If I strip them, they are gone.
-    // I will include them. The "Hide" requirement might be a UI instruction "Never auto-expand".
-    // Or I should flag them `isNoisy: true`.
-
     const mapped = {
         name: node.name,
         path: node.path,
         size: node.size,
-        category: node.category, // for icon/color mapping in UI
+        category: node.category,
+        type: node.type,
         children: []
     };
 
     if (node.children) {
         mapped.children = node.children
-            .filter(child => {
-                // strict filter if "Filter" is the word. 
-                // But generally users want truth.
-                // "Hide noisy folders by default" suggests soft hiding.
-                // Let's pass them through but maybe client filters? 
-                // The prompt says "This module only prepares data".
-                // I will include everything.
-                return true;
-            })
-            .map(child => ({
-                name: child.name,
-                path: child.path,
-                size: child.size,
-                category: child.category,
-                type: child.type, // 'file' or 'directory'
-                // No recursion here for children's children -> Lazy structure
-                hasChildren: (child.children && child.children.length > 0)
-            }));
+            // 1. FILTER NOISE
+            .filter(child => child.name && !HIDDEN_DIRS.has(child.name) && !child.name.startsWith('.'))
+            // 2. RECURSIVE MAP
+            .map(child => mapDirectoryNode(child))
+            // 3. SORT BY SIZE DESC
+            .sort((a, b) => b.size - a.size);
     }
 
     return mapped;

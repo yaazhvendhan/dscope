@@ -1,6 +1,7 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const os = require('os'); // Import os
 
 let mainWindow;
 let backendProcess;
@@ -32,6 +33,11 @@ function createWindow() {
             contextIsolation: true,
             nodeIntegration: false
         }
+    });
+
+    // Handle getHomeDir request
+    ipcMain.handle('get-home-dir', () => {
+        return os.homedir();
     });
 
     mainWindow.loadFile(path.join(__dirname, '../client/dist/index.html'));

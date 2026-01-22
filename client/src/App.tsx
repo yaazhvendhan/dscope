@@ -1,7 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './App.css';
 import type { AppState, PresentationData } from './types';
 import Overview from './pages/Overview';
+import Directory from './pages/Directory';
+import DrilldownList from './pages/DrilldownList';
 
 const API_URL = 'http://localhost:3000';
 
@@ -13,12 +15,26 @@ function App() {
     error: null,
   });
 
+  const [viewMode, setViewMode] = useState<'overview' | 'directory'>('overview');
+  const [drilldownCategory, setDrilldownCategory] = useState<string | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleScan = async () => {
-    if (!state.path) return;
+  // Default Auto-Scan
+  useEffect(() => {
+    const init = async () => {
+      // @ts-ignore - exposed by preload
+      const homeDir = await window.api?.getHomeDir();
+      if (homeDir) {
+        triggerScan(homeDir);
+      }
+    };
+    init();
+  }, []);
 
-    // cleanup previous controller
+  const triggerScan = async (pathStr: string) => {
+    setState(prev => ({ ...prev, path: pathStr, status: 'scanning', error: null, data: null }));
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -26,13 +42,11 @@ function App() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setState(prev => ({ ...prev, status: 'scanning', error: null, data: null }));
-
     try {
       const response = await fetch(`${API_URL}/present`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: state.path }),
+        body: JSON.stringify({ path: pathStr }),
         signal: controller.signal,
       });
 
@@ -55,12 +69,31 @@ function App() {
     }
   };
 
+  const handleManualScan = () => {
+    if (state.path) triggerScan(state.path);
+  };
+
   const handleCancel = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
       setState(prev => ({ ...prev, status: 'cancelled' }));
     }
+  };
+
+  // DRILL DOWN Logic (stays in Overview mode)
+  const handleCategoryClick = (categoryId: string) => {
+    setDrilldownCategory(categoryId);
+  };
+
+  const handleBackToOverview = () => {
+    setDrilldownCategory(null);
+  };
+
+  const handleViewToggle = (mode: 'overview' | 'directory') => {
+    setViewMode(mode);
+    // Clear drilldown when switching modes
+    if (mode === 'directory') setDrilldownCategory(null);
   };
 
   return (
@@ -70,7 +103,7 @@ function App() {
       <div className="scan-controls">
         <input
           type="text"
-          placeholder="/path/to/scan"
+          placeholder="/path/to/scan (optional, auto-scans HOME)"
           value={state.path}
           onChange={(e) => setState(prev => ({ ...prev, path: e.target.value }))}
           disabled={state.status === 'scanning'}
@@ -79,7 +112,7 @@ function App() {
         {state.status === 'scanning' ? (
           <button onClick={handleCancel} className="cancel-btn">Cancel</button>
         ) : (
-          <button onClick={handleScan} disabled={!state.path}>Analyze</button>
+          <button onClick={handleManualScan} disabled={!state.path}>Analyze</button>
         )}
       </div>
 
@@ -90,9 +123,42 @@ function App() {
       </div>
 
       {state.status === 'success' && state.data && (
-        <div className="results-area">
-          {/* Render Overview Mode by default */}
-          <Overview categories={state.data.overview.categories} />
+        <div className="results-container">
+          <div className="view-toggle">
+            <button
+              className={`toggle-btn ${viewMode === 'overview' ? 'active' : ''}`}
+              onClick={() => handleViewToggle('overview')}
+            >
+              Overview
+            </button>
+            <button
+              className={`toggle-btn ${viewMode === 'directory' ? 'active' : ''}`}
+              onClick={() => handleViewToggle('directory')}
+            >
+              Directory
+            </button>
+          </div>
+
+          <div className="view-content">
+            {viewMode === 'overview' ? (
+              // Overview mode: show either category cards or drilldown list
+              drilldownCategory ? (
+                <DrilldownList
+                  root={state.data.directory.root}
+                  categoryId={drilldownCategory}
+                  onBack={handleBackToOverview}
+                />
+              ) : (
+                <Overview
+                  categories={state.data.overview.categories}
+                  onCategoryClick={handleCategoryClick}
+                />
+              )
+            ) : (
+              // Directory mode: show file explorer (no filtering)
+              <Directory root={state.data.directory.root} />
+            )}
+          </div>
         </div>
       )}
     </div>

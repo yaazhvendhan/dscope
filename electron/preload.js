@@ -1,4 +1,4 @@
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
     checkBackendStatus: async () => {
@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld('api', {
             return { running: false };
         }
     }
+},
+    getHomeDir: () => ipcRenderer.invoke('get-home-dir')
 });

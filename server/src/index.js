@@ -2,82 +2,118 @@ const express = require('express');
 const { scanDirectory } = require('./core/scanner');
 const { classifyNode } = require('./intelligence/classifier');
 const { explainClassification } = require('./intelligence/explainer');
+const { saveSnapshot, loadLatestSnapshot } = require('./history/snapshotStore');
+const { computeCategoryDiff } = require('./history/diffEngine');
+const { mapToUI } = require('./presentation/presentationMapper');
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-/**
- * Recursive helper to enrich the scan tree with intelligence.
- * Mutates the node in place (acceptable for the response object).
- */
+// --- HELPERS ---
+
+// Helper to recursively enrich the tree (mutates in place)
 function enrichTree(node) {
     if (!node) return;
 
-    // Classify
+    // 1. Classify
     const classification = classifyNode(node);
 
-    // Explain
+    // 2. Explain
     const explanation = explainClassification(classification);
 
-    // Merge results
-    Object.assign(node, classification, explanation);
+    // 3. Decorate
+    node.category = classification.category;
+    node.confidence = classification.confidence;
 
-    // Recurse
+    node.classification = { ...classification };
+
+    node.explanation = explanation.explanation;
+    node.title = explanation.title;
+    node.riskLevel = explanation.riskLevel;
+
+    // 4. Recurse
     if (node.children) {
-        node.children.forEach(child => enrichTree(child));
+        node.children.forEach(enrichTree);
     }
+    return node;
 }
 
-// GET /health
+// Reusable analysis pipeline
+async function analyzePath(pathStr, signal) {
+    // 1. Scan
+    const rawTree = await scanDirectory(pathStr, { signal });
+
+    // 2. Enrich (Classify + Explain)
+    // We modify the tree in-place
+    enrichTree(rawTree);
+
+    return rawTree;
+}
+
+// Generate snapshot from enriched tree (Backend categories only)
+function generateSnapshot(tree) {
+    const snapshot = {
+        timestamp: new Date().toISOString(),
+        totalSize: tree.size || 0,
+        categories: {}
+    };
+
+    function traverse(node) {
+        // Aggregate categories from files only to avoid double counting if directories have categories
+        if (node.type === 'file' && node.category) {
+            snapshot.categories[node.category] = (snapshot.categories[node.category] || 0) + node.size;
+        }
+
+        if (node.children) {
+            node.children.forEach(traverse);
+        }
+    }
+
+    traverse(tree);
+    return snapshot;
+}
+
+// --- ENDPOINTS ---
+
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// POST /scan
 app.post('/scan', async (req, res) => {
-    const { path } = req.body;
+    const { path: pathStr } = req.body;
 
-    if (!path || typeof path !== 'string') {
+    if (!pathStr || typeof pathStr !== 'string') {
         return res.status(400).json({ error: 'Invalid path' });
     }
 
     const controller = new AbortController();
     const { signal } = controller;
 
-    // Hook into response close used for cancellation
-    // If the response stream closes before we finished writing, the client left.
     res.on('close', () => {
         if (!res.writableEnded) {
-            console.log('DEBUG: Client disconnected, aborting scan...');
+            console.log(`Request cancelled by client for ${pathStr}`);
             controller.abort();
         }
     });
 
     try {
-        const result = await scanDirectory(path, { signal });
-        res.json(result);
+        const tree = await scanDirectory(pathStr, { signal });
+        res.json(tree);
     } catch (err) {
-        if (err.code === 'ABORT_ERR') {
-            // If request was aborted, response might be closed or not writable
-            if (!res.headersSent) {
-                return res.status(499).json({ error: 'Scan cancelled' });
-            }
-            return;
+        if (err.name === 'AbortError' || signal.aborted) {
+            return res.status(499).json({ error: 'Scan cancelled' });
         }
-        console.error(err); // Minimal logging for server errors
-        if (!res.headersSent) {
-            res.status(500).json({ error: 'Internal server error' });
-        }
+        console.error('Scan error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
-// POST /analyze
 app.post('/analyze', async (req, res) => {
-    const { path } = req.body;
+    const { path: pathStr } = req.body;
 
-    if (!path || typeof path !== 'string') {
+    if (!pathStr || typeof pathStr !== 'string') {
         return res.status(400).json({ error: 'Invalid path' });
     }
 
@@ -86,33 +122,65 @@ app.post('/analyze', async (req, res) => {
 
     res.on('close', () => {
         if (!res.writableEnded) {
-            console.log('DEBUG: Client disconnected, aborting analysis...');
             controller.abort();
         }
     });
 
     try {
-        // 1. Scan
-        const result = await scanDirectory(path, { signal });
-
-        // 2. Enrich (Classify + Explain)
-        enrichTree(result);
-
-        res.json(result);
+        const enrichedTree = await analyzePath(pathStr, signal);
+        res.json(enrichedTree);
     } catch (err) {
-        if (err.code === 'ABORT_ERR') {
-            if (!res.headersSent) {
-                return res.status(499).json({ error: 'Scan cancelled' });
-            }
-            return;
+        if (err.name === 'AbortError' || signal.aborted) {
+            return res.status(499).json({ error: 'Scan cancelled' });
         }
-        console.error(err);
-        if (!res.headersSent) {
-            res.status(500).json({ error: 'Internal server error' });
-        }
+        res.status(500).json({ error: err.message });
     }
 });
 
-app.listen(PORT, 'localhost', () => {
+app.post('/present', async (req, res) => {
+    const { path: pathStr } = req.body;
+
+    if (!pathStr || typeof pathStr !== 'string') {
+        return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    res.on('close', () => {
+        if (!res.writableEnded) {
+            controller.abort();
+        }
+    });
+
+    try {
+        // 1. Analyze
+        const enrichTree = await analyzePath(pathStr, signal);
+
+        // 2. History & Snapshot Logic
+        const previousSnapshot = await loadLatestSnapshot();
+        const currentSnapshot = generateSnapshot(enrichTree);
+
+        // 3. Diff (Plan B)
+        const diffResult = computeCategoryDiff(previousSnapshot, currentSnapshot);
+
+        // 4. Save Snapshot
+        await saveSnapshot(currentSnapshot);
+
+        // 5. Present (Plan C1)
+        const uiData = mapToUI(enrichTree, previousSnapshot, diffResult);
+
+        res.json(uiData);
+
+    } catch (err) {
+        if (err.name === 'AbortError' || signal.aborted) {
+            return res.status(499).json({ error: 'Scan cancelled' });
+        }
+        console.error('Present error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.listen(PORT, () => {
     console.log(`DScope Server running on http://localhost:${PORT}`);
 });
