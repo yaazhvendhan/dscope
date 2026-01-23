@@ -1,18 +1,22 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
-const os = require('os'); // Import os
+const os = require('os');
+const fs = require('fs');
 
 let mainWindow;
 let backendProcess;
 
-function createServer() {
+function createServer(privileged = false) {
     const serverPath = path.join(__dirname, '../server/src/index.js');
-    console.log(`Starting backend from: ${serverPath}`);
+    console.log(`Starting backend from: ${serverPath} (Privileged: ${privileged})`);
 
-    backendProcess = spawn('node', [serverPath], {
-        cwd: path.join(__dirname, '../server'), // Set CWD to server root so relative paths work
-        stdio: 'inherit' // Pipe stdout/stderr to parent
+    const command = privileged ? 'pkexec' : 'node';
+    const args = privileged ? ['node', serverPath] : [serverPath];
+
+    backendProcess = spawn(command, args, {
+        cwd: path.join(__dirname, '../server'),
+        stdio: 'inherit'
     });
 
     backendProcess.on('error', (err) => {
@@ -38,6 +42,45 @@ function createWindow() {
     // Handle getHomeDir request
     ipcMain.handle('get-home-dir', () => {
         return os.homedir();
+    });
+
+    ipcMain.handle('get-external-devices', async () => {
+        const user = os.userInfo().username;
+        const candidates = [
+            `/media/${user}`,
+            `/run/media/${user}`
+        ];
+        const devices = [];
+        for (const base of candidates) {
+            try {
+                if (fs.existsSync(base)) {
+                    const dirs = fs.readdirSync(base);
+                    for (const dir of dirs) {
+                        devices.push({
+                            name: dir,
+                            path: path.join(base, dir)
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error(`Error scanning mounts at ${base}:`, e);
+            }
+        }
+        return devices;
+    });
+
+    ipcMain.handle('restart-backend', async (event, privileged) => {
+        if (backendProcess) {
+            console.log('Stopping current backend...');
+            backendProcess.kill();
+            backendProcess = null;
+        }
+        // Small delay to ensure port release?
+        // Node spawn kill is usually fast but OS might hold port.
+        // We'll hope for the best or rely on retry logic in server if port busy.
+        // But better to just restart.
+        createServer(privileged);
+        return true;
     });
 
     mainWindow.loadFile(path.join(__dirname, '../client/dist/index.html'));

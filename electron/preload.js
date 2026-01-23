@@ -13,5 +13,7 @@ contextBridge.exposeInMainWorld('api', {
             return { running: false };
         }
     },
-    getHomeDir: () => ipcRenderer.invoke('get-home-dir')
+    getHomeDir: () => ipcRenderer.invoke('get-home-dir'),
+    getExternalDevices: () => ipcRenderer.invoke('get-external-devices'),
+    restartBackend: (privileged) => ipcRenderer.invoke('restart-backend', privileged)
 });

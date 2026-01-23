@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import './App.css';
 import type { AppState, PresentationData } from './types';
 import Overview from './pages/Overview';
 import Directory from './pages/Directory';
 import DrilldownList from './pages/DrilldownList';
+import ScanTargetSelection from './components/ScanTargetSelection';
 
 const API_URL = 'http://localhost:3000';
+const SNAPSHOT_PATH = '~/.local/share/dscope/snapshots/';
 
 function App() {
   const [state, setState] = useState<AppState>({
@@ -15,22 +17,37 @@ function App() {
     error: null,
   });
 
+  const [targetSelected, setTargetSelected] = useState(false);
+  const [scanScope, setScanScope] = useState<string>('');
   const [viewMode, setViewMode] = useState<'overview' | 'directory'>('overview');
   const [drilldownCategory, setDrilldownCategory] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Default Auto-Scan
-  useEffect(() => {
-    const init = async () => {
-      // @ts-ignore - exposed by preload
-      const homeDir = await window.api?.getHomeDir();
-      if (homeDir) {
-        triggerScan(homeDir);
+  const handleTargetSelect = async (pathStr: string, type: 'home' | 'system' | 'device') => {
+    setScanScope(type === 'home' ? 'Home Directory' : type === 'system' ? 'Entire System' : 'External Device');
+    setTargetSelected(true);
+
+    // Set path immediately for UI feedback if needed
+    setState(prev => ({ ...prev, path: pathStr }));
+
+    if (type === 'system') {
+      // Allow UI to update before blocking
+      await new Promise(r => setTimeout(r, 100));
+
+      try {
+        // @ts-ignore
+        await window.api?.restartBackend(true);
+        // Wait for backend to come up
+        await new Promise(r => setTimeout(r, 3000));
+      } catch (err) {
+        console.error("Failed to restart backend", err);
+        // Proceed anyway, might fail later or backend didn't die
       }
-    };
-    init();
-  }, []);
+    }
+
+    triggerScan(pathStr);
+  };
 
   const triggerScan = async (pathStr: string) => {
     setState(prev => ({ ...prev, path: pathStr, status: 'scanning', error: null, data: null }));
@@ -81,6 +98,11 @@ function App() {
     }
   };
 
+  const handleReset = () => {
+    setTargetSelected(false);
+    setState(prev => ({ ...prev, status: 'idle', data: null, error: null }));
+  };
+
   // DRILL DOWN Logic (stays in Overview mode)
   const handleCategoryClick = (categoryId: string) => {
     setDrilldownCategory(categoryId);
@@ -97,9 +119,14 @@ function App() {
 
   return (
     <div className="container">
+      {/* Target Selection Modal */}
+      {!targetSelected && (
+        <ScanTargetSelection onSelect={handleTargetSelect} />
+      )}
+
       {/* Header */}
       <header className="header">
-        <div className="logo">
+        <div className="logo" style={{ cursor: 'pointer' }} onClick={handleReset} title="Return to start">
           <div className="logo-icon">💿</div>
           <div className="logo-text">
             <h1>DScope Intelligence</h1>
@@ -110,7 +137,7 @@ function App() {
           <div className="scan-controls">
             <input
               type="text"
-              placeholder="/path/to/scan (auto-scans HOME)"
+              placeholder="Path to scan"
               value={state.path}
               onChange={(e) => setState(prev => ({ ...prev, path: e.target.value }))}
               disabled={state.status === 'scanning'}
@@ -128,9 +155,19 @@ function App() {
                 🔄 Scan
               </button>
             )}
+            <button key="new" onClick={handleReset} className="btn btn-outline" title="New Scan">
+              New
+            </button>
           </div>
         </div>
       </header>
+
+      {/* Scope Info */}
+      {targetSelected && scanScope && (
+        <div style={{ textAlign: 'center', marginBottom: '20px', color: 'var(--gray)', fontSize: '14px' }}>
+          Scan Scope: <strong>{scanScope}</strong> &nbsp;•&nbsp; Path: {state.path}
+        </div>
+      )}
 
       {/* Status Messages */}
       {(state.status === 'scanning' || state.status === 'cancelled' || state.status === 'error') && (
@@ -190,7 +227,7 @@ function App() {
               : 'Not available'}
           </p>
           <p style={{ marginTop: '5px', opacity: 0.8, fontFamily: 'monospace' }}>
-            Storage: ~/.local/share/dscope/snapshots/
+            Storage: {SNAPSHOT_PATH}
           </p>
         </div>
       </footer>

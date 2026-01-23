@@ -71,6 +71,8 @@ async function _scanRecursive(dirPath, options, state) {
         throw error;
     }
 
+    const EXCLUDED_PATHS = new Set(['/proc', '/sys', '/dev', '/run', '/tmp', '/mnt', '/var/run', '/var/lock']);
+
     const promises = entries.map(async (entry) => {
         // 3. Check Cancellation inside loop (optional but good for responsiveness)
         if (options.signal?.aborted) {
@@ -81,6 +83,11 @@ async function _scanRecursive(dirPath, options, state) {
         }
 
         const fullPath = path.join(dirPath, entry);
+
+        // Check exclusions
+        if (EXCLUDED_PATHS.has(fullPath)) {
+            return null;
+        }
 
         try {
             const stats = await fs.lstat(fullPath);
