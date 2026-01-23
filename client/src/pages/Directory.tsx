@@ -18,12 +18,18 @@ const DirectoryItem: React.FC<ItemProps> = ({ node, depth }) => {
     const isDirectory = node.type === 'directory' || hasChildren;
     const displayName = node.name || node.path?.split('/').pop() || 'Unknown';
 
+    // Check if we have explanation data to show
+    const hasExplanation = !!(node.title || node.explanation);
+
+    // Allow expansion if it's a directory OR if there's an explanation to show
+    const isExpandable = isDirectory || hasExplanation;
+
     const handleToggle = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isDirectory) {
+        if (isExpandable) {
             setExpanded(prev => !prev);
         }
-    }, [isDirectory]);
+    }, [isExpandable]);
 
     return (
         <>
@@ -33,6 +39,7 @@ const DirectoryItem: React.FC<ItemProps> = ({ node, depth }) => {
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && handleToggle(e as any)}
+                style={{ cursor: isExpandable ? 'pointer' : 'default' }}
             >
                 <div className="item-info">
                     <div className={`item-icon ${isDirectory ? 'folder-icon' : 'file-icon'}`}>
@@ -47,18 +54,46 @@ const DirectoryItem: React.FC<ItemProps> = ({ node, depth }) => {
                         )}
                     </span>
                 </div>
-                <span className="item-size">{formatBytes(node.size)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {node.riskLevel && node.riskLevel !== 'low' && node.riskLevel !== 'unknown' && (
+                        <span className={`risk-badge ${node.riskLevel}`}>
+                            {node.riskLevel} risk
+                        </span>
+                    )}
+                    <span className="item-size">{formatBytes(node.size)}</span>
+                </div>
             </div>
 
-            {expanded && hasChildren && (
-                <div className="directory-children">
-                    {node.children!.map((child, idx) => (
-                        <DirectoryItem
-                            key={child.path || `${child.name}-${idx}`}
-                            node={child}
-                            depth={depth + 1}
-                        />
-                    ))}
+            {expanded && (
+                <div className="directory-expanded-content">
+                    {/* Explanation Panel */}
+                    {(node.title || node.explanation) && (
+                        <div className="explanation-panel">
+                            <div className="explanation-header">
+                                <span className="explanation-icon">💡</span>
+                                <strong>{node.title || 'Insight'}</strong>
+                            </div>
+                            <p>{node.explanation}</p>
+                            {node.riskLevel && (
+                                <div className="risk-indicator">
+                                    Risk Level: <span className={`risk-tag ${node.riskLevel}`}>{node.riskLevel}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Children */}
+                    {hasChildren && (
+                        <div className="directory-children">
+                            {node.children!.map((child, idx) => (
+                                <DirectoryItem
+                                    key={child.path || `${child.name}-${idx}`}
+                                    node={child}
+                                    depth={depth + 1}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </>

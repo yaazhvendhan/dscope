@@ -224,6 +224,10 @@ function mapDirectoryNode(node) {
         size: node.size,
         category: node.category,
         type: node.type,
+        // Pass through explanation fields from explainer
+        title: node.title || null,
+        explanation: node.explanation || null,
+        riskLevel: node.riskLevel || null,
         children: []
     };
 

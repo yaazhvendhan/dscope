@@ -695,3 +695,121 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--secondary);
 }
+
+/* ==========================================
+   Explanation & Insights (Plan C5)
+   ========================================== */
+
+/* Overview Explanation Block */
+.explanation-block {
+  margin-top: 10px;
+  border-top: 1px solid var(--light-gray);
+  padding-top: 8px;
+}
+
+.growth-reason {
+  font-size: 12px;
+  color: var(--gray);
+  margin-top: 5px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Directory Explanation Panel (Inline) */
+.directory-expanded-content {
+  background-color: #fafbfd;
+  /* Very light blue-gray */
+}
+
+.explanation-panel {
+  background: white;
+  margin: 10px 20px 10px 42px;
+  /* Indented like children */
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 4px solid var(--warning);
+  /* Highlight */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.explanation-icon {
+  font-size: 16px;
+}
+
+.explanation-panel p {
+  font-size: 13px;
+  color: var(--dark);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* Risk Badges */
+.risk-indicator {
+  font-size: 12px;
+  color: var(--gray);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.risk-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.risk-tag.low {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.risk-tag.normal {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.risk-tag.medium {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.risk-tag.high {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.risk-tag.user {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+/* Mini Risk Badge for Row */
+.risk-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+.risk-badge.medium {
+  background-color: var(--warning);
+  color: white;
+}
+
+.risk-badge.high {
+  background-color: var(--danger);
+  color: white;
+}

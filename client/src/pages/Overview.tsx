@@ -29,6 +29,19 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
     other: 'Uncategorized files and data'
 };
 
+const CATEGORY_GROWTH_REASONS: Record<string, string> = {
+    cache: 'Temporary files accumulated since the last scan. Usually safe to ignore.',
+    logs: 'System activity logs generated over time.',
+    apps: 'New applications or dependencies installed recently.',
+    containers: 'New container images or volumes created.',
+    downloads: 'New files downloaded to local folders.',
+    photos: 'New images added to the library.',
+    videos: 'New video content added.',
+    documents: 'New documents created or saved.',
+    system: 'System updates or kernel changes.',
+    other: 'Uncategorized data changes.'
+};
+
 const Overview: React.FC<Props> = ({ categories, onCategoryClick }) => {
     return (
         <div className="dashboard">
@@ -58,9 +71,14 @@ const Overview: React.FC<Props> = ({ categories, onCategoryClick }) => {
                         </p>
                     )}
                     {cat.delta !== null && cat.delta !== 0 && (
-                        <span className={`delta ${cat.delta > 0 ? 'positive' : 'negative'}`}>
-                            {cat.delta > 0 ? '+' : ''}{formatBytes(cat.delta)}
-                        </span>
+                        <div className="explanation-block">
+                            <span className={`delta ${cat.delta > 0 ? 'positive' : 'negative'}`}>
+                                {cat.delta > 0 ? '+' : ''}{formatBytes(cat.delta)}
+                            </span>
+                            <p className="growth-reason">
+                                {CATEGORY_GROWTH_REASONS[cat.id] || 'Disk usage changed since last scan.'}
+                            </p>
+                        </div>
                     )}
                 </div>
             ))}

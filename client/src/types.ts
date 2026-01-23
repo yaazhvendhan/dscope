@@ -36,6 +36,9 @@ export interface DirectoryNode {
     type?: string;
     hasChildren?: boolean;
     children?: DirectoryNode[];
+    title?: string;
+    explanation?: string;
+    riskLevel?: 'low' | 'normal' | 'medium' | 'user' | 'unknown';
 }
 
 export interface PresentationData {
