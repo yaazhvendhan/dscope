@@ -1,0 +1,12 @@
+nohup: ignoring input
+DScope Server running on http://localhost:3000
+Present error: Error: ENOENT: no such file or directory, scandir '/~'
+    at async Object.readdir (node:internal/fs/promises:957:18)
+    at async _scanRecursive (/home/horcrux/Projects/dscope/DScope/server/src/core/scanner.js:58:19)
+    at async analyzePath (/home/horcrux/Projects/dscope/DScope/server/src/index.js:46:21)
+    at async /home/horcrux/Projects/dscope/DScope/server/src/index.js:158:28 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'scandir',
+  path: '/~'
+}

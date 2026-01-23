@@ -59,19 +59,26 @@ function aggregateOverviewStats(node) {
     };
 
     function traverse(currentNode) {
-        // If it's a directory, traverse children
-        if (currentNode.children) {
+        if (!currentNode) return;
+
+        // ALWAYS recurse into children first (depth-first)
+        if (currentNode.children && currentNode.children.length > 0) {
             currentNode.children.forEach(traverse);
+        }
+
+        // Only count FILES (not directories)
+        if (currentNode.type !== 'file') {
             return;
         }
 
-        // It's a file
+        // It's a file - count it
         const size = currentNode.size || 0;
         const category = currentNode.category || 'unclassified';
-        const ext = path.extname(currentNode.name || '').toLowerCase();
+        // Use path.basename since scanner stores full path, not just name
+        const filename = currentNode.name || path.basename(currentNode.path || '');
+        const ext = path.extname(filename).toLowerCase();
 
         // 1. EXTENSIONS FIRST (Global Priority)
-        // Fixes "Photos / Videos / Documents = 0" bug by ignoring folder category
         if (EXTENSIONS.photos.has(ext)) {
             stats.photos += size;
             return;

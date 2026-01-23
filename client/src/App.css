@@ -150,6 +150,13 @@ button:hover:not(:disabled) {
   margin-top: 4px;
 }
 
+.overview-subtitle {
+  font-size: 0.75em;
+  color: #adb5bd;
+  margin-top: 2px;
+  font-style: italic;
+}
+
 .overview-delta {
   font-size: 0.9em;
   font-weight: 500;
@@ -223,4 +230,161 @@ button:hover:not(:disabled) {
 .badge.unknown {
   background-color: #f8d7da;
   color: #721c24;
+}
+
+/* Directory View Styles */
+.directory-view {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.directory-header-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 2px solid #f1f3f5;
+  font-weight: 600;
+  color: #868e96;
+  font-size: 0.85em;
+  text-transform: uppercase;
+}
+
+.directory-item-container {
+  /* Container for recursive items */
+}
+
+.directory-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px 10px 0;
+  cursor: default;
+  border-bottom: 1px solid #f8f9fa;
+  transition: background-color 0.15s;
+  user-select: none;
+}
+
+.directory-row.clickable {
+  cursor: pointer;
+}
+
+.directory-row:hover {
+  background-color: #f8f9fa;
+}
+
+.directory-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #343a40;
+}
+
+.directory-icon {
+  font-size: 1.1em;
+  width: 20px;
+  text-align: center;
+}
+
+.directory-meta {
+  font-size: 0.9em;
+  color: #6c757d;
+  font-family: monospace;
+}
+
+.directory-children {
+  /* Children container */
+}
+
+/* Drilldown List Styles */
+.drilldown-container {
+  width: 100%;
+}
+
+.drilldown-header {
+  margin-bottom: 20px;
+}
+
+.back-btn {
+  background: #e7f5ff;
+  color: #1971c2;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95em;
+  margin-bottom: 12px;
+}
+
+.back-btn:hover {
+  background: #d0ebff;
+}
+
+.drilldown-header h2 {
+  margin: 8px 0 4px 0;
+  color: #2c3e50;
+}
+
+.file-count {
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.drilldown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drilldown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.drilldown-item:hover {
+  background: #e9ecef;
+}
+
+.drilldown-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-icon {
+  font-size: 1.1em;
+}
+
+.drilldown-size {
+  font-family: monospace;
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  font-size: 1.1em;
+}
+
+.results-container {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.view-content {
+  margin-top: 16px;
 }
