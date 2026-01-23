@@ -182,6 +182,17 @@ function App() {
       {/* Footer */}
       <footer className="footer">
         <p>DScope Intelligence v1.0 | Designed for Linux Systems</p>
+
+        <div style={{ marginTop: '15px', fontSize: '13px', color: '#6c757d' }}>
+          <p>
+            <strong>Last snapshot:</strong> {state.data?.overview.lastSnapshot
+              ? new Date(state.data.overview.lastSnapshot).toLocaleString()
+              : 'Not available'}
+          </p>
+          <p style={{ marginTop: '5px', opacity: 0.8, fontFamily: 'monospace' }}>
+            Storage: ~/.local/share/dscope/snapshots/
+          </p>
+        </div>
       </footer>
     </div>
   );

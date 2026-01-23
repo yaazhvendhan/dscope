@@ -35,7 +35,8 @@ function mapToUI(analyzedTree, latestSnapshot, diffResult) {
 
     return {
         overview: {
-            categories: overviewCategories
+            categories: overviewCategories,
+            lastSnapshot: latestSnapshot ? latestSnapshot.timestamp : null
         },
         directory: {
             root: directoryRoot

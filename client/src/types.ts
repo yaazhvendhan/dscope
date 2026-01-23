@@ -44,6 +44,7 @@ export interface DirectoryNode {
 export interface PresentationData {
     overview: {
         categories: OverviewCategory[];
+        lastSnapshot: string | null;
     };
     directory: {
         root: DirectoryNode;
