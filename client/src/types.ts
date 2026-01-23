@@ -13,11 +13,19 @@ export interface ScanNode {
 export interface ScanResult extends ScanNode { }
 
 
+export interface FileInfo {
+    name: string;
+    path: string;
+    size: number;
+    parent: string;
+}
+
 export interface OverviewCategory {
     id: string;
     label: string;
     size: number;
     delta: number | null;
+    files: FileInfo[];
 }
 
 export interface DirectoryNode {

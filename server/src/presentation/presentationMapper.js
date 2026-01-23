@@ -5,7 +5,6 @@ const EXTENSIONS = {
     photos: new Set(['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.svg', '.raw']),
     videos: new Set(['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v']),
     documents: new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.csv', '.rtf', '.odt', '.ods']),
-    // Helper to check extensions case-insensitively
 };
 
 // Noisy directory names to hide in Directory Mode
@@ -25,13 +24,13 @@ function mapToUI(analyzedTree, latestSnapshot, diffResult) {
         return { overview: { categories: [] }, directory: { root: null } };
     }
 
-    // 1. Compute Overview Data (Aggregation from TREE)
-    const overviewStats = aggregateOverviewStats(analyzedTree);
+    // 1. Compute Overview Data (Aggregation from TREE) - now includes files array
+    const overviewData = aggregateOverviewStats(analyzedTree);
 
     // 2. Map Overlay (Deltas from DIFF)
-    const overviewCategories = buildOverviewCategories(overviewStats, diffResult);
+    const overviewCategories = buildOverviewCategories(overviewData, diffResult);
 
-    // 3. Transform Directory Tree (Simplified, Lazy-like)
+    // 3. Transform Directory Tree
     const directoryRoot = mapDirectoryNode(analyzedTree);
 
     return {
@@ -48,22 +47,23 @@ function mapToUI(analyzedTree, latestSnapshot, diffResult) {
 
 function aggregateOverviewStats(node) {
     const stats = {
-        photos: 0,
-        videos: 0,
-        documents: 0,
-        apps: 0,        // packages + dependencies
-        cache: 0,
-        containers: 0,
-        system: 0,      // logs + system + kernels
-        other: 0        // unclassified + remainder
+        photos: { size: 0, files: [] },
+        videos: { size: 0, files: [] },
+        documents: { size: 0, files: [] },
+        apps: { size: 0, files: [] },
+        cache: { size: 0, files: [] },
+        containers: { size: 0, files: [] },
+        system: { size: 0, files: [] },
+        other: { size: 0, files: [] }
     };
 
-    function traverse(currentNode) {
+    function traverse(currentNode, parentPath = '') {
         if (!currentNode) return;
 
         // ALWAYS recurse into children first (depth-first)
         if (currentNode.children && currentNode.children.length > 0) {
-            currentNode.children.forEach(traverse);
+            const nodePath = currentNode.path || parentPath;
+            currentNode.children.forEach(child => traverse(child, nodePath));
         }
 
         // Only count FILES (not directories)
@@ -74,44 +74,55 @@ function aggregateOverviewStats(node) {
         // It's a file - count it
         const size = currentNode.size || 0;
         const category = currentNode.category || 'unclassified';
-        // Use path.basename since scanner stores full path, not just name
         const filename = currentNode.name || path.basename(currentNode.path || '');
         const ext = path.extname(filename).toLowerCase();
+        const filePath = currentNode.path || '';
+        const parent = path.dirname(filePath).split('/').pop() || 'Root';
+
+        const fileInfo = { name: filename, path: filePath, size, parent };
 
         // 1. EXTENSIONS FIRST (Global Priority)
         if (EXTENSIONS.photos.has(ext)) {
-            stats.photos += size;
+            stats.photos.size += size;
+            stats.photos.files.push(fileInfo);
             return;
         }
         if (EXTENSIONS.videos.has(ext)) {
-            stats.videos += size;
+            stats.videos.size += size;
+            stats.videos.files.push(fileInfo);
             return;
         }
         if (EXTENSIONS.documents.has(ext)) {
-            stats.documents += size;
+            stats.documents.size += size;
+            stats.documents.files.push(fileInfo);
             return;
         }
 
         // 2. BACKEND CATEGORIES
         if (category === 'cache') {
-            stats.cache += size;
+            stats.cache.size += size;
+            stats.cache.files.push(fileInfo);
             return;
         }
         if (category === 'containers') {
-            stats.containers += size;
+            stats.containers.size += size;
+            stats.containers.files.push(fileInfo);
             return;
         }
         if (category === 'logs' || category === 'system' || category === 'kernels') {
-            stats.system += size;
+            stats.system.size += size;
+            stats.system.files.push(fileInfo);
             return;
         }
         if (category === 'packages' || category === 'dependencies') {
-            stats.apps += size;
+            stats.apps.size += size;
+            stats.apps.files.push(fileInfo);
             return;
         }
 
         // 3. FALLBACK
-        stats.other += size;
+        stats.other.size += size;
+        stats.other.files.push(fileInfo);
     }
 
     traverse(node);
@@ -120,37 +131,60 @@ function aggregateOverviewStats(node) {
 
 function buildOverviewCategories(stats, diffResult) {
     const cats = [
-        { id: 'photos', label: 'Photos', size: stats.photos, delta: null },
-        { id: 'videos', label: 'Videos', size: stats.videos, delta: null },
-        { id: 'documents', label: 'Documents', size: stats.documents, delta: null },
+        {
+            id: 'photos',
+            label: 'Photos',
+            size: stats.photos.size,
+            files: stats.photos.files,
+            delta: null
+        },
+        {
+            id: 'videos',
+            label: 'Videos',
+            size: stats.videos.size,
+            files: stats.videos.files,
+            delta: null
+        },
+        {
+            id: 'documents',
+            label: 'Documents',
+            size: stats.documents.size,
+            files: stats.documents.files,
+            delta: null
+        },
         {
             id: 'apps',
             label: 'Apps & Dependencies',
-            size: stats.apps,
+            size: stats.apps.size,
+            files: stats.apps.files,
             delta: getDelta(diffResult, ['packages'])
         },
         {
             id: 'cache',
             label: 'Cache',
-            size: stats.cache,
+            size: stats.cache.size,
+            files: stats.cache.files,
             delta: getDelta(diffResult, ['cache'])
         },
         {
             id: 'containers',
             label: 'Containers',
-            size: stats.containers,
+            size: stats.containers.size,
+            files: stats.containers.files,
             delta: getDelta(diffResult, ['containers'])
         },
         {
             id: 'system',
             label: 'System',
-            size: stats.system,
+            size: stats.system.size,
+            files: stats.system.files,
             delta: getDelta(diffResult, ['logs', 'system', 'kernels'])
         },
         {
             id: 'other',
             label: 'Other',
-            size: stats.other,
+            size: stats.other.size,
+            files: stats.other.files,
             delta: getDelta(diffResult, ['unclassified', 'user-data'])
         }
     ];
@@ -182,8 +216,10 @@ function getDelta(diffResult, backendCategories) {
 // ------ DIRECTORY MAPPING LOGIC (RECURSIVE) ------
 
 function mapDirectoryNode(node) {
+    const filename = node.name || path.basename(node.path || '');
+
     const mapped = {
-        name: node.name,
+        name: filename,
         path: node.path,
         size: node.size,
         category: node.category,
@@ -193,11 +229,11 @@ function mapDirectoryNode(node) {
 
     if (node.children) {
         mapped.children = node.children
-            // 1. FILTER NOISE
-            .filter(child => child.name && !HIDDEN_DIRS.has(child.name) && !child.name.startsWith('.'))
-            // 2. RECURSIVE MAP
+            .filter(child => {
+                const childName = child.name || path.basename(child.path || '');
+                return childName && !HIDDEN_DIRS.has(childName) && !childName.startsWith('.');
+            })
             .map(child => mapDirectoryNode(child))
-            // 3. SORT BY SIZE DESC
             .sort((a, b) => b.size - a.size);
     }
 

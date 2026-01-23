@@ -1,55 +1,10 @@
 import React, { useMemo } from 'react';
-import type { DirectoryNode } from '../types';
+import type { OverviewCategory, FileInfo } from '../types';
 import { formatBytes } from '../utils/format';
-import '../App.css';
 
 interface Props {
-    root: DirectoryNode;
-    categoryId: string;
+    category: OverviewCategory;
     onBack: () => void;
-}
-
-const EXTENSIONS: Record<string, string[]> = {
-    photos: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.svg', '.raw'],
-    videos: ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'],
-    documents: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.csv', '.rtf', '.odt', '.ods']
-};
-
-interface FileInfo {
-    name: string;
-    path: string;
-    size: number;
-    parentFolder: string;
-}
-
-// Collect all files matching the category extension
-function collectFiles(node: DirectoryNode, categoryId: string, result: FileInfo[] = []) {
-    const allowedExts = EXTENSIONS[categoryId];
-    if (!allowedExts) return result;
-
-    if (node.type === 'file') {
-        const filename = node.name || node.path.split('/').pop() || '';
-        const ext = filename.toLowerCase().match(/\.[^.]+$/)?.[0] || '';
-        if (allowedExts.includes(ext)) {
-            // Extract parent folder from path
-            const pathParts = node.path.split('/');
-            pathParts.pop(); // Remove filename
-            const parentFolder = pathParts.pop() || 'Root';
-
-            result.push({
-                name: filename,
-                path: node.path,
-                size: node.size,
-                parentFolder
-            });
-        }
-    }
-
-    if (node.children) {
-        node.children.forEach(child => collectFiles(child, categoryId, result));
-    }
-
-    return result;
 }
 
 // Group files by parent folder
@@ -57,9 +12,9 @@ function groupByFolder(files: FileInfo[]): Map<string, FileInfo[]> {
     const groups = new Map<string, FileInfo[]>();
 
     files.forEach(file => {
-        const existing = groups.get(file.parentFolder) || [];
+        const existing = groups.get(file.parent) || [];
         existing.push(file);
-        groups.set(file.parentFolder, existing);
+        groups.set(file.parent, existing);
     });
 
     // Sort groups by total size (largest first)
@@ -74,44 +29,44 @@ function groupByFolder(files: FileInfo[]): Map<string, FileInfo[]> {
     return sortedGroups;
 }
 
-const categoryLabels: Record<string, string> = {
-    photos: 'Photos',
-    videos: 'Videos',
-    documents: 'Documents'
-};
-
 const categoryDescriptions: Record<string, string> = {
     photos: 'Image files found across all scanned directories',
     videos: 'Video files found across all scanned directories',
-    documents: 'Document files found across all scanned directories'
+    documents: 'Document files found across all scanned directories',
+    apps: 'Application packages and dependencies',
+    cache: 'Cached files and temporary data',
+    containers: 'Docker and container-related files',
+    system: 'System files, logs, and kernel data',
+    other: 'Uncategorized files'
 };
 
-const DrilldownList: React.FC<Props> = ({ root, categoryId, onBack }) => {
+const categoryIcons: Record<string, string> = {
+    photos: '🖼️',
+    videos: '🎬',
+    documents: '📄',
+    apps: '📦',
+    cache: '🗑️',
+    containers: '🐳',
+    system: '⚙️',
+    other: '📁'
+};
+
+const DrilldownList: React.FC<Props> = ({ category, onBack }) => {
+    const files = category.files || [];
+
     const groupedFiles = useMemo(() => {
-        const collected = collectFiles(root, categoryId);
-        return groupByFolder(collected);
-    }, [root, categoryId]);
+        return groupByFolder(files);
+    }, [files]);
 
-    const totalFiles = useMemo(() => {
-        let count = 0;
-        groupedFiles.forEach(files => count += files.length);
-        return count;
-    }, [groupedFiles]);
-
-    const totalSize = useMemo(() => {
-        let size = 0;
-        groupedFiles.forEach(files => {
-            files.forEach(f => size += f.size);
-        });
-        return size;
-    }, [groupedFiles]);
+    const totalFiles = files.length;
+    const totalSize = category.size;
 
     return (
         <div className="drilldown-container">
             <div className="drilldown-header">
                 <button onClick={onBack} className="back-btn">← Back to Overview</button>
-                <h2>{categoryLabels[categoryId] || categoryId}</h2>
-                <p className="drilldown-description">{categoryDescriptions[categoryId] || ''}</p>
+                <h2>{categoryIcons[category.id] || '📁'} {category.label}</h2>
+                <p className="drilldown-description">{categoryDescriptions[category.id] || ''}</p>
                 <p className="file-count">{totalFiles} files · {formatBytes(totalSize)}</p>
             </div>
 
@@ -119,16 +74,16 @@ const DrilldownList: React.FC<Props> = ({ root, categoryId, onBack }) => {
                 {totalFiles === 0 ? (
                     <div className="empty-message">No files found in this category</div>
                 ) : (
-                    Array.from(groupedFiles.entries()).map(([folder, files]) => (
+                    Array.from(groupedFiles.entries()).map(([folder, folderFiles]) => (
                         <div key={folder} className="drilldown-group">
                             <div className="group-header">
                                 <span className="group-folder">📁 {folder}</span>
                                 <span className="group-stats">
-                                    {files.length} files · {formatBytes(files.reduce((s, f) => s + f.size, 0))}
+                                    {folderFiles.length} files · {formatBytes(folderFiles.reduce((s, f) => s + f.size, 0))}
                                 </span>
                             </div>
                             <div className="group-files">
-                                {files.sort((a, b) => b.size - a.size).map((file, index) => (
+                                {folderFiles.sort((a, b) => b.size - a.size).map((file, index) => (
                                     <div key={`${file.path}-${index}`} className="drilldown-item">
                                         <div className="drilldown-name">
                                             <span className="file-icon">📄</span>

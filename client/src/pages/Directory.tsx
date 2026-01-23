@@ -1,60 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import type { DirectoryNode } from '../types';
 import { formatBytes } from '../utils/format';
-import '../App.css';
 
 interface Props {
     root: DirectoryNode;
 }
 
-const DirectoryItem: React.FC<{ node: DirectoryNode; level: number; defaultExpanded?: boolean }> = ({ node, level, defaultExpanded }) => {
-    const [isExpanded, setIsExpanded] = useState(defaultExpanded || false);
-    const hasChildren = node.children && node.children.length > 0;
+interface ItemProps {
+    node: DirectoryNode;
+    depth: number;
+}
 
-    const handleToggle = () => {
-        if (hasChildren) {
-            setIsExpanded(!isExpanded);
+const DirectoryItem: React.FC<ItemProps> = ({ node, depth }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    const hasChildren = node.children && node.children.length > 0;
+    const isDirectory = node.type === 'directory' || hasChildren;
+    const displayName = node.name || node.path?.split('/').pop() || 'Unknown';
+
+    const handleToggle = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isDirectory) {
+            setExpanded(prev => !prev);
         }
-    };
+    }, [isDirectory]);
 
     return (
-        <div className="directory-item-container">
+        <>
             <div
-                className={`directory-row ${hasChildren ? 'clickable' : ''}`}
-                style={{ paddingLeft: `${level * 20 + 10}px` }}
+                className={`directory-item ${isDirectory ? 'folder' : ''}`}
                 onClick={handleToggle}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleToggle(e as any)}
             >
-                <div className="directory-name">
-                    <span className="directory-icon">
-                        {node.type === 'file' ? '📄' : (isExpanded ? '📂' : '📁')}
+                <div className="item-info">
+                    <div className={`item-icon ${isDirectory ? 'folder-icon' : 'file-icon'}`}>
+                        {isDirectory ? (expanded ? '📂' : '📁') : '📄'}
+                    </div>
+                    <span className="item-name">
+                        {displayName}
+                        {isDirectory && hasChildren && (
+                            <span style={{ marginLeft: '8px', opacity: 0.5, fontSize: '12px' }}>
+                                ({node.children!.length} items)
+                            </span>
+                        )}
                     </span>
-                    {node.name}
                 </div>
-                <div className="directory-meta">
-                    <span className="directory-size">{formatBytes(node.size)}</span>
-                </div>
+                <span className="item-size">{formatBytes(node.size)}</span>
             </div>
 
-            {isExpanded && hasChildren && (
+            {expanded && hasChildren && (
                 <div className="directory-children">
-                    {node.children!.map((child, index) => (
-                        <DirectoryItem key={`${child.path}-${index}`} node={child} level={level + 1} />
+                    {node.children!.map((child, idx) => (
+                        <DirectoryItem
+                            key={child.path || `${child.name}-${idx}`}
+                            node={child}
+                            depth={depth + 1}
+                        />
                     ))}
                 </div>
             )}
-        </div>
+        </>
     );
 };
 
 const Directory: React.FC<Props> = ({ root }) => {
+    if (!root) {
+        return (
+            <div className="directory-view">
+                <div className="directory-header">
+                    <h2>Directory Explorer</h2>
+                </div>
+                <div className="empty-message">No directory data available</div>
+            </div>
+        );
+    }
+
     return (
         <div className="directory-view">
-            <div className="directory-header-row">
-                <span>Name</span>
-                <span>Size</span>
+            <div className="directory-header">
+                <h2>📁 Directory Explorer</h2>
+                <span style={{ color: 'var(--gray)', fontSize: '14px' }}>
+                    {root.path}
+                </span>
             </div>
-            <div className="directory-list">
-                <DirectoryItem node={root} level={0} defaultExpanded={true} />
+            <div className="directory-content">
+                {root.children && root.children.length > 0 ? (
+                    root.children.map((child, idx) => (
+                        <DirectoryItem
+                            key={child.path || `${child.name}-${idx}`}
+                            node={child}
+                            depth={0}
+                        />
+                    ))
+                ) : (
+                    <div className="empty-message">No items in this directory</div>
+                )}
             </div>
         </div>
     );
