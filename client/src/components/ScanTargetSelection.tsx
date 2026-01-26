@@ -15,16 +15,21 @@ const ScanTargetSelection: React.FC<Props> = ({ onSelect }) => {
     const [scanningDevices, setScanningDevices] = useState(true);
     const [homeDir, setHomeDir] = useState<string>('');
 
+    const checkDevices = async () => {
+        setScanningDevices(true);
+        // @ts-ignore
+        const devs = await window.api?.getExternalDevices();
+        setDevices(devs || []);
+        setScanningDevices(false);
+    };
+
     useEffect(() => {
         const load = async () => {
             // @ts-ignore
             const home = await window.api?.getHomeDir();
             setHomeDir(home || '/');
 
-            // @ts-ignore
-            const devs = await window.api?.getExternalDevices();
-            setDevices(devs || []);
-            setScanningDevices(false);
+            checkDevices();
         };
         load();
     }, []);
@@ -70,7 +75,18 @@ const ScanTargetSelection: React.FC<Props> = ({ onSelect }) => {
 
                     {/* Option 3: External Devices */}
                     <div className="external-section">
-                        <h4>External Devices</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h4 style={{ margin: 0 }}>External Devices</h4>
+                            <button
+                                className="btn btn-outline"
+                                onClick={checkDevices}
+                                disabled={scanningDevices}
+                                style={{ padding: '6px 12px', fontSize: '12px' }}
+                            >
+                                {scanningDevices ? 'Checking...' : '↻ Check'}
+                            </button>
+                        </div>
+
                         {scanningDevices ? (
                             <p className="device-status">Scanning for devices...</p>
                         ) : devices.length > 0 ? (

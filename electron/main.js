@@ -27,6 +27,9 @@ function createServer(privileged = false) {
         console.log(`Backend process exited with code ${code}`);
     });
 }
+const { Menu } = require('electron');
+Menu.setApplicationMenu(null);
+
 
 function createWindow() {
     mainWindow = new BrowserWindow({

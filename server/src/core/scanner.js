@@ -107,7 +107,7 @@ async function _scanRecursive(dirPath, options, state) {
 
                 return {
                     path: fullPath,
-                    size: stats.size,
+                    size: stats.blocks * 512,
                     type: 'file'
                 };
             }
