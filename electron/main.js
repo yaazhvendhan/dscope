@@ -8,15 +8,50 @@ let mainWindow;
 let backendProcess;
 
 function createServer(privileged = false) {
+
+
+    // In both dev and prod (bundled in ASAR), the server is at ../server relative to this file
+    // This works because we now include "server/**/*" in "files" effectively.
     const serverPath = path.join(__dirname, '../server/src/index.js');
+
+    // IMPORTANT: 'cwd' cannot be inside an ASAR archive for spawn().
+    // We must use a real directory. process.resourcesPath is safe.
+    // The server script will resolve its dependencies relative to itself (__dirname), so this is fine.
+    const cwd = app.isPackaged ? process.resourcesPath : path.join(__dirname, '../server');
+
     console.log(`Starting backend from: ${serverPath} (Privileged: ${privileged})`);
 
-    const command = privileged ? 'pkexec' : 'node';
-    const args = privileged ? ['node', serverPath] : [serverPath];
+    let command;
+    let args;
+    let env = { ...process.env };
+
+    if (app.isPackaged) {
+        // PRODUCTION: Use the bundled Electron executable as the Node runtime
+        // This removes the dependency on the system having 'node' installed.
+        command = process.execPath;
+
+        if (privileged) {
+            // pkexec with env trick to set ELECTRON_RUN_AS_NODE
+            command = 'pkexec';
+            args = ['env', 'ELECTRON_RUN_AS_NODE=1', process.execPath, serverPath];
+        } else {
+            // Normal unprivileged run
+            env.ELECTRON_RUN_AS_NODE = '1';
+            args = [serverPath];
+        }
+    } else {
+        // DEVELOPMENT: Use system node
+        command = privileged ? 'pkexec' : 'node';
+        args = privileged ? ['node', serverPath] : [serverPath];
+    }
+
+    console.log(`Spawning backend with CWD: ${cwd}`);
+    console.log(`Spawning backend with CWD: ${cwd}`);
 
     backendProcess = spawn(command, args, {
-        cwd: path.join(__dirname, '../server'),
-        stdio: 'inherit'
+        cwd: cwd,
+        stdio: 'inherit',
+        env: env
     });
 
     backendProcess.on('error', (err) => {
@@ -76,13 +111,32 @@ function createWindow() {
         if (backendProcess) {
             console.log('Stopping current backend...');
             backendProcess.kill();
+            // Wait a tiny bit for it to die?
             backendProcess = null;
         }
-        // Small delay to ensure port release?
-        // Node spawn kill is usually fast but OS might hold port.
-        // We'll hope for the best or rely on retry logic in server if port busy.
-        // But better to just restart.
+
+        // Spawn the new backend
         createServer(privileged);
+
+        // If privileged, we want to know if it fails immediately (Auth Cancel)
+        if (privileged) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Check if process is still alive
+                    if (backendProcess && backendProcess.exitCode !== null) {
+                        console.error(`Privileged backend failed to start. Exit code: ${backendProcess.exitCode}`);
+                        // Fallback to unprivileged immediately?
+                        console.log("Fallback to unprivileged backend...");
+                        createServer(false);
+                        resolve(false);
+                    } else {
+                        console.log("Privileged backend started successfully (or is still running).");
+                        resolve(true);
+                    }
+                }, 1000); // 1s wait
+            });
+        }
+
         return true;
     });
 

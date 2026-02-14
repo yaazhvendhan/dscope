@@ -38,12 +38,21 @@ function App() {
 
             try {
                 // @ts-ignore
-                await window.api?.restartBackend(true);
-                // Wait for backend to come up
-                await new Promise(r => setTimeout(r, 3000));
+                const success = await window.api?.restartBackend(true);
+
+                if (!success) {
+                    // Auth cancelled or failed
+                    console.warn("Backend restart failed or cancelled");
+                    setTargetSelected(false); // Go back to selection
+                    return; // Do NOT trigger scan
+                }
+
+                // Wait for backend to come up (1s is usually enough if success returned)
+                await new Promise(r => setTimeout(r, 1000));
             } catch (err) {
                 console.error("Failed to restart backend", err);
-                // Proceed anyway, might fail later or backend didn't die
+                setTargetSelected(false);
+                return;
             }
         }
 

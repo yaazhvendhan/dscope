@@ -164,8 +164,16 @@ app.post('/present', async (req, res) => {
         // 3. Diff (Plan B)
         const diffResult = computeCategoryDiff(previousSnapshot, currentSnapshot);
 
-        // 4. Save Snapshot
-        await saveSnapshot(currentSnapshot);
+        // 4. Save Snapshot (Only for main system paths)
+        // Skip for external media to avoid skewing history
+        const isExternal = pathStr.startsWith('/media') || pathStr.startsWith('/run/media') || pathStr.startsWith('/mnt');
+        const isSafeToSnapshot = !isExternal && (pathStr === '/' || pathStr.startsWith('/home'));
+
+        if (isSafeToSnapshot) {
+            await saveSnapshot(currentSnapshot);
+        } else {
+            console.log(`Skipping snapshot for external/non-root path: ${pathStr}`);
+        }
 
         // 5. Present (Plan C1)
         const uiData = mapToUI(enrichTree, previousSnapshot, diffResult);
