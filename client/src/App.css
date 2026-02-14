@@ -302,38 +302,6 @@ body {
 }
 
 /* Category-specific colors */
-.card[data-category="photos"] {
-    border-left: 4px solid #3c6e71;
-}
-
-.card[data-category="videos"] {
-    border-left: 4px solid #70ae6e;
-}
-
-.card[data-category="documents"] {
-    border-left: 4px solid #ff9f1c;
-}
-
-.card[data-category="apps"] {
-    border-left: 4px solid #9d4edd;
-}
-
-.card[data-category="cache"] {
-    border-left: 4px solid #e63946;
-}
-
-.card[data-category="containers"] {
-    border-left: 4px solid #00b4d8;
-}
-
-.card[data-category="system"] {
-    border-left: 4px solid #f72585;
-}
-
-.card[data-category="other"] {
-    border-left: 4px solid #6c757d;
-}
-
 /* Category Icons */
 .category-icon {
     width: 48px;
@@ -343,7 +311,7 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 22px;
-    margin-bottom: 15px;
+    flex-shrink: 0;
 }
 
 .card[data-category="photos"] .category-icon {

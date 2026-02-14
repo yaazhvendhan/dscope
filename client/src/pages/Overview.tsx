@@ -55,13 +55,15 @@ const Overview: React.FC<Props> = ({ categories, onCategoryClick }) => {
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && onCategoryClick(cat.id)}
                 >
-                    <div className="category-icon">
-                        {CATEGORY_ICONS[cat.id] || '📁'}
-                    </div>
                     <div className="card-header">
-                        <div>
-                            <h3 className="card-title">{cat.label}</h3>
-                            <p className="card-subtitle">{CATEGORY_DESCRIPTIONS[cat.id] || ''}</p>
+                        <div className="header-left" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                            <div className="category-icon">
+                                {CATEGORY_ICONS[cat.id] || '📁'}
+                            </div>
+                            <div>
+                                <h3 className="card-title">{cat.label}</h3>
+                                <p className="card-subtitle">{CATEGORY_DESCRIPTIONS[cat.id] || ''}</p>
+                            </div>
                         </div>
                         <div className="card-value">{formatBytes(cat.size)}</div>
                     </div>
