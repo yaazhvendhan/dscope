@@ -3,6 +3,7 @@ import './App.css';
 import type { AppState, PresentationData } from './types';
 import Overview from './pages/Overview';
 import Directory from './pages/Directory';
+import logo from './assets/DScope_logo.png';
 import DrilldownList from './pages/DrilldownList';
 import ScanTargetSelection from './components/ScanTargetSelection';
 
@@ -127,9 +128,8 @@ function App() {
             {/* Header */}
             <header className="header">
                 <div className="logo" style={{ cursor: 'pointer' }} onClick={handleReset} title="Return to start">
-                    <div className="logo-icon">💿</div>
+                    <img src={logo} alt="DScope Logo" className="logo-icon" />
                     <div className="logo-text">
-                        <h1>DScope Intelligence</h1>
                         <p>Linux Disk Space Visualization Tool</p>
                     </div>
                 </div>
