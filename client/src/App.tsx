@@ -27,35 +27,31 @@ function App() {
 
     const handleTargetSelect = async (pathStr: string, type: 'home' | 'system' | 'device') => {
         setScanScope(type === 'home' ? 'Home Directory' : type === 'system' ? 'Entire System' : 'External Device');
-        setTargetSelected(true);
 
         // Set path immediately for UI feedback if needed
         setState(prev => ({ ...prev, path: pathStr }));
 
         if (type === 'system') {
-            // Allow UI to update before blocking
-            await new Promise(r => setTimeout(r, 100));
+            // DON'T show scan UI yet — wait for auth to complete first.
+            // The password dialog will block until user responds.
 
             try {
                 // @ts-ignore
                 const success = await window.api?.restartBackend(true);
 
                 if (!success) {
-                    // Auth cancelled or failed
+                    // Auth cancelled or failed — go back to selection
                     console.warn("Backend restart failed or cancelled");
-                    setTargetSelected(false); // Go back to selection
-                    return; // Do NOT trigger scan
+                    return; // Do NOT show scan UI or trigger scan
                 }
-
-                // Wait for backend to come up (1s is usually enough if success returned)
-                await new Promise(r => setTimeout(r, 1000));
             } catch (err) {
                 console.error("Failed to restart backend", err);
-                setTargetSelected(false);
                 return;
             }
         }
 
+        // Auth succeeded (or not needed) — now show the scan UI and start scanning
+        setTargetSelected(true);
         triggerScan(pathStr);
     };
 

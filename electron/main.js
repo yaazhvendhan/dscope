@@ -46,7 +46,6 @@ function createServer(privileged = false) {
     }
 
     console.log(`Spawning backend with CWD: ${cwd}`);
-    console.log(`Spawning backend with CWD: ${cwd}`);
 
     backendProcess = spawn(command, args, {
         cwd: cwd,
@@ -111,33 +110,78 @@ function createWindow() {
         if (backendProcess) {
             console.log('Stopping current backend...');
             backendProcess.kill();
-            // Wait a tiny bit for it to die?
             backendProcess = null;
         }
 
         // Spawn the new backend
         createServer(privileged);
 
-        // If privileged, we want to know if it fails immediately (Auth Cancel)
-        if (privileged) {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    // Check if process is still alive
-                    if (backendProcess && backendProcess.exitCode !== null) {
-                        console.error(`Privileged backend failed to start. Exit code: ${backendProcess.exitCode}`);
-                        // Fallback to unprivileged immediately?
-                        console.log("Fallback to unprivileged backend...");
-                        createServer(false);
-                        resolve(false);
-                    } else {
-                        console.log("Privileged backend started successfully (or is still running).");
-                        resolve(true);
-                    }
-                }, 1000); // 1s wait
-            });
+        if (!privileged) {
+            // For unprivileged, just wait a bit for port to bind
+            await new Promise(r => setTimeout(r, 500));
+            return true;
         }
 
-        return true;
+        // For privileged (pkexec): poll until the backend is ready OR the process dies.
+        // pkexec shows a password dialog that blocks until the user responds.
+        // We must NOT resolve until we know the outcome.
+        const http = require('http');
+        const MAX_WAIT_MS = 60000; // 60s max (user might take time typing password)
+        const POLL_INTERVAL = 500;
+        const startTime = Date.now();
+
+        return new Promise((resolve) => {
+            const poll = () => {
+                // 1. Check if process has exited (user cancelled or auth failed)
+                if (backendProcess && backendProcess.exitCode !== null) {
+                    console.error(`Privileged backend exited with code: ${backendProcess.exitCode}`);
+                    console.log("Auth cancelled or failed. Falling back to unprivileged backend...");
+                    createServer(false);
+                    // Wait a tiny bit for fallback to start
+                    setTimeout(() => resolve(false), 500);
+                    return;
+                }
+
+                // 2. Check if backend is null (shouldn't happen but safety)
+                if (!backendProcess) {
+                    console.error("Backend process is null during polling.");
+                    createServer(false);
+                    setTimeout(() => resolve(false), 500);
+                    return;
+                }
+
+                // 3. Try health check
+                const req = http.get('http://localhost:3000/health', (res) => {
+                    if (res.statusCode === 200) {
+                        console.log("Privileged backend is ready!");
+                        resolve(true);
+                    } else {
+                        scheduleNext();
+                    }
+                });
+                req.on('error', () => {
+                    // Not ready yet, keep polling
+                    scheduleNext();
+                });
+                req.setTimeout(400, () => {
+                    req.destroy();
+                    scheduleNext();
+                });
+            };
+
+            const scheduleNext = () => {
+                if (Date.now() - startTime > MAX_WAIT_MS) {
+                    console.error("Timed out waiting for privileged backend.");
+                    createServer(false);
+                    setTimeout(() => resolve(false), 500);
+                    return;
+                }
+                setTimeout(poll, POLL_INTERVAL);
+            };
+
+            // Start first poll after a short delay
+            setTimeout(poll, POLL_INTERVAL);
+        });
     });
 
     mainWindow.loadFile(path.join(__dirname, '../client/dist/index.html'));

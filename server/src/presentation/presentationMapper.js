@@ -131,6 +131,16 @@ function aggregateOverviewStats(node) {
 }
 
 function buildOverviewCategories(stats, diffResult) {
+    // Trim file arrays to prevent excessive payload sizes
+    for (const key of Object.keys(stats)) {
+        if (stats[key].files) {
+            stats[key].files.sort((a, b) => b.size - a.size);
+            if (stats[key].files.length > 500) {
+                stats[key].files = stats[key].files.slice(0, 500);
+            }
+        }
+    }
+
     const cats = [
         {
             id: 'photos',
@@ -216,7 +226,10 @@ function getDelta(diffResult, backendCategories) {
 
 // ------ DIRECTORY MAPPING LOGIC (RECURSIVE) ------
 
-function mapDirectoryNode(node) {
+const MAX_DIRECTORY_DEPTH = 5; // Prevent exponential blowup on full system scans
+const MAX_CHILDREN_PER_NODE = 50;
+
+function mapDirectoryNode(node, depth = 0) {
     const filename = node.name || path.basename(node.path || '');
 
     const mapped = {
@@ -232,14 +245,51 @@ function mapDirectoryNode(node) {
         children: []
     };
 
+    // Stop recursing beyond max depth
+    if (depth >= MAX_DIRECTORY_DEPTH) {
+        if (node.children && node.children.length > 0) {
+            mapped.children = [{
+                name: `⋯ ${node.children.length} items (expand limit reached)`,
+                path: '',
+                size: node.children.reduce((acc, c) => acc + (c.size || 0), 0),
+                category: 'other',
+                type: 'directory',
+                title: null,
+                explanation: null,
+                riskLevel: null,
+                children: []
+            }];
+        }
+        return mapped;
+    }
+
     if (node.children) {
-        mapped.children = node.children
+        let childrenNodes = node.children
             .filter(child => {
                 const childName = child.name || path.basename(child.path || '');
                 return childName && !HIDDEN_DIRS.has(childName) && !childName.startsWith('.');
             })
-            .map(child => mapDirectoryNode(child))
+            .map(child => mapDirectoryNode(child, depth + 1))
             .sort((a, b) => b.size - a.size);
+
+        if (childrenNodes.length > MAX_CHILDREN_PER_NODE) {
+            const extra = childrenNodes.slice(MAX_CHILDREN_PER_NODE);
+            const extraSize = extra.reduce((acc, c) => acc + c.size, 0);
+            childrenNodes = childrenNodes.slice(0, MAX_CHILDREN_PER_NODE);
+            childrenNodes.push({
+                name: `... and ${extra.length} more items`,
+                path: '',
+                size: extraSize,
+                category: 'other',
+                type: 'directory',
+                title: null,
+                explanation: null,
+                riskLevel: null,
+                children: []
+            });
+        }
+
+        mapped.children = childrenNodes;
     }
 
     return mapped;
