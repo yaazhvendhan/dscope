@@ -1,96 +1,199 @@
+
+
 # DScope
 
-**DScope** is a Linux disk intelligence and visualization tool that analyzes filesystem usage and explains how storage is distributed across the system.  
-Unlike traditional disk analyzers that only show sizes, DScope provides **categorized insights, growth tracking, and human-readable explanations** to help users understand *why* disk space changes over time.
+DScope is a Linux disk intelligence and visualization tool that analyzes filesystem usage and explains how storage is distributed across the system.
+
+Unlike traditional disk analyzers that only show folder sizes, DScope provides categorized insights, growth tracking, and human-readable explanations to help users understand why disk space changes over time.
 
 ---
 
 ## Features
 
-- **Accurate Disk Usage Analysis**
-  - Uses Linux filesystem metadata (`lstat`, allocated blocks) to measure real disk usage similar to `du`.
+### Accurate Disk Usage Analysis
 
-- **System-wide Storage Categorization**
-  - Automatically groups files into meaningful categories:
-  - System
-  - Cache
-  - Applications & Dependencies
-  - Containers
-  - Photos
-  - Documents
-  - Videos
-  - Other
+DScope measures real disk usage using Linux filesystem metadata (`lstat`, allocated blocks), similar to the `du` command.
 
-- **Growth Tracking**
-  - Snapshot-based storage history
-  - Detects and explains storage growth between scans.
+### Intelligent Storage Categorization
 
-- **Dual Visualization Modes**
-  - **Overview Mode** – High-level categorized storage insights  
-  - **Directory Mode** – Explorer-style directory navigation similar to VS Code.
+Automatically groups files into meaningful categories such as:
 
-- **Secure System Scanning**
-  - Supports full system scans with privilege escalation using `pkexec`.
+* System
+* Cache
+* Applications & Dependencies
+* Containers
+* Photos
+* Documents
+* Videos
+* Other
 
-- **External Device Support**
-  - Automatically detects mounted drives and external devices.
+### Growth Tracking
+
+DScope stores disk usage snapshots and compares them over time to explain how storage grows.
+
+### Dual Visualization Modes
+
+* **Overview Mode** – High-level categorized storage insights
+* **Directory Mode** – Explorer-style navigation similar to VS Code
+
+### Secure System Scanning
+
+Supports full system scans using privilege escalation (`pkexec`) when required.
+
+### External Device Detection
+
+Automatically detects mounted external drives and USB storage devices.
 
 ---
 
 ## Architecture
-DScope follows a **desktop + local service architecture**:
-Electron (Desktop Shell)
-│
-│ IPC
-▼
+
+DScope follows a desktop + local service architecture.
+
+```
+Electron Desktop Shell
+        │
+        │ IPC
+        ▼
 Node.js + Express Backend
-│
-│ Filesystem APIs
-▼
+        │
+        │ Filesystem APIs
+        ▼
 Linux Kernel (stat / lstat)
+```
 
+---
 
-### Core Components
+## Core Components
 
-- **Scanner**
-  - Recursively traverses the filesystem and computes disk usage.
+### Scanner
 
-- **Classifier**
-  - Categorizes files into logical storage groups.
+Recursively traverses the filesystem and calculates disk usage.
 
-- **Explainer**
-  - Generates human-readable explanations for storage categories.
+### Classifier
 
-- **Snapshot Engine**
-  - Stores disk usage snapshots for historical comparison.
+Categorizes files into logical storage groups.
 
-- **Diff Engine**
-  - Calculates storage changes between scans.
+### Explainer
+
+Generates human-readable explanations for storage categories.
+
+### Snapshot Engine
+
+Stores disk usage snapshots for historical comparison.
+
+### Diff Engine
+
+Calculates storage changes between scans.
+
+### Presentation Layer
+
+Transforms backend data into UI-ready structures.
 
 ---
 
 ## Tech Stack
 
-- **Frontend**
-  - React
-  - JavaScript
-  - HTML / CSS
+### Frontend
 
-- **Desktop Layer**
-  - Electron
+* React
+* JavaScript
+* HTML
+* CSS
 
-- **Backend**
-  - Node.js
-  - Express.js
+### Desktop Layer
 
-- **System Integration**
-  - Linux Filesystem APIs (`lstat`, POSIX metadata)
-  - Process management (`child_process`)
-  - Electron IPC
+* Electron
+
+### Backend
+
+* Node.js
+* Express.js
+
+### System Integration
+
+* Linux Filesystem APIs (`lstat`, POSIX metadata)
+* Electron IPC
+* Process management (`child_process`)
+* Privilege escalation (`pkexec`)
 
 ---
 
+## Installation
 
-git clone https://github.com/yourusername/dscope.git
+### Clone the repository
+
+```
+git clone https://github.com/YOUR_USERNAME/dscope.git
 cd dscope
+```
+
+### Install dependencies
+
+```
+npm install
+```
+
+### Install frontend dependencies
+
+```
+cd client
+npm install
+npm run build
+cd ..
+```
+
+### Run the application
+
+```
+npm start
+```
+
+---
+
+## Usage
+
+1. Launch DScope
+2. Choose a **scan scope**:
+
+   * Home directory
+   * Entire system
+   * External device
+3. Start the scan
+4. View results in:
+
+   * **Overview** (categorized storage)
+   * **Directory** (explorer-style browsing)
+
+Snapshots are automatically stored at:
+
+```
+~/.local/share/dscope/snapshots/
+```
+
+---
+
+## Project Structure
+
+```
+DScope
+├── client                # React frontend
+├── electron              # Electron main process
+├── server
+│   ├── core              # Filesystem scanner
+│   ├── intelligence      # Classification & explanation engine
+│   ├── history           # Snapshot storage and diff engine
+│   └── presentation      # UI data mapping
+```
+
+---
+
+## Future Improvements
+
+* Storage cleanup suggestions
+* Historical storage charts
+* Scheduled background scans
+* Package distribution (.deb / .rpm)
+* Cross-platform support
+
 
