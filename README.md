@@ -193,7 +193,6 @@ DScope
 * Storage cleanup suggestions
 * Historical storage charts
 * Scheduled background scans
-* Package distribution (.deb / .rpm)
 * Cross-platform support
 
 
