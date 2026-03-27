@@ -75,6 +75,36 @@ function generateSnapshot(tree) {
     return snapshot;
 }
 
+// Compress tree for safe JSON serialization — keeps largest children, merges rest
+function compressTreeForUI(node, maxChildren = 200) {
+    if (!node || !node.children) return node;
+
+    // Sort children by size descending — biggest first
+    node.children.sort((a, b) => (b.size || 0) - (a.size || 0));
+
+    if (node.children.length > maxChildren) {
+        const kept = node.children.slice(0, maxChildren);
+
+        const otherSize = node.children
+            .slice(maxChildren)
+            .reduce((sum, c) => sum + (c.size || 0), 0);
+
+        kept.push({
+            name: 'other',
+            type: 'directory',
+            size: otherSize,
+            aggregated: true
+        });
+
+        node.children = kept;
+    }
+
+    // Recurse into kept children
+    node.children.forEach(child => compressTreeForUI(child, maxChildren));
+
+    return node;
+}
+
 // --- ENDPOINTS ---
 
 app.get('/health', (req, res) => {
@@ -155,11 +185,11 @@ app.post('/present', async (req, res) => {
 
     try {
         // 1. Analyze
-        const enrichTree = await analyzePath(pathStr, signal);
+        const tree = await analyzePath(pathStr, signal);
 
         // 2. History & Snapshot Logic
         const previousSnapshot = await loadLatestSnapshot();
-        const currentSnapshot = generateSnapshot(enrichTree);
+        const currentSnapshot = generateSnapshot(tree);
 
         // 3. Diff (Plan B)
         const diffResult = computeCategoryDiff(previousSnapshot, currentSnapshot);
@@ -176,9 +206,27 @@ app.post('/present', async (req, res) => {
         }
 
         // 5. Present (Plan C1)
-        const uiData = mapToUI(enrichTree, previousSnapshot, diffResult);
+        const uiData = mapToUI(tree, previousSnapshot, diffResult);
 
-        res.json(uiData);
+        // Compress tree to prevent JSON serialization crash
+        const safeData = compressTreeForUI(uiData);
+
+        // Final safety check on JSON size
+        let jsonStr;
+        try {
+            jsonStr = JSON.stringify(safeData);
+        } catch (e) {
+            console.error('JSON serialization failed:', e.message);
+            return res.status(500).json({ error: 'Scan result too large for visualization' });
+        }
+
+        if (jsonStr.length > 50_000_000) {
+            console.error(`Response too large: ${(jsonStr.length / 1_000_000).toFixed(1)}MB`);
+            return res.status(500).json({ error: 'Scan result too large for visualization' });
+        }
+
+        res.setHeader('Content-Type', 'application/json');
+        res.send(jsonStr);
 
     } catch (err) {
         if (err.name === 'AbortError' || signal.aborted) {
